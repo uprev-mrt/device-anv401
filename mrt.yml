@@ -1,0 +1,8 @@
+---
+name: anv401
+author: Jason Berger
+description: Driver for ANV401 based capactive fingerprint sensor
+category: Device/Biometric
+docs: 
+  - manual: https://www.waveshare.com/wiki/UART_Fingerprint_Sensor_(C)
+requires: []
