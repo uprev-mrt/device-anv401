@@ -141,7 +141,7 @@ uint8_t GetcompareLevel(void)
 * @return     0xFF: error
   	      other: success, the value is compare level
 ****************************************************************************/
-uint8_t SetcompareLevel(uint8_t temp)
+int8_t SetcompareLevel(uint8_t temp)
 {
 	uint8_t m;
 	
