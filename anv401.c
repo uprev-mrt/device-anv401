@@ -322,10 +322,9 @@ anv401_status_e anv401_set_timeout(anv401_t* dev, uint8_t val)
 {
   anv401_trx_t trx;
   anv401_build_trx(&trx, ANV401_CMD_TIMEOUT);
-  uint8_t timeout = 0;
 
   //This byte detemermines if we are setting, or getting
-  trx.mData[2] = ANV401_QRY;
+  trx.mData[2] = ANV401_SET;
   trx.mData[1] =val;
 
   return anv401_std_transaction(dev,&trx);
