@@ -42,9 +42,9 @@ typedef enum{
 } anv401_status_e;
 
 typedef enum{
-
   ANV401_CMD_MOD_SN    = 0x08,
-  ANV401_CMD_QRY_SN   = 0x0f5,
+  ANV401_CMD_QRY_SN   = 0x2a,
+  ANV401_CMD_SLP      = 0x2c,
   ANV401_CMD_ADD_1    = 0x01,
   ANV401_CMD_ADD_2    = 0x02,
   ANV401_CMD_ADD_3	 = 0x03,
@@ -53,7 +53,6 @@ typedef enum{
   ANV401_CMD_DEL_ALL	 = 0x05,
   ANV401_CMD_USER_CNT = 0x09,
   ANV401_CMD_COM_LEV	 = 0x28,
-  ANV401_CMD_LP_MODE  = 0x2C,
   ANV401_CMD_TIMEOUT  = 0x2E
 } anv401_cmd_e;
 
@@ -103,6 +102,13 @@ void anv401_init(anv401_t* dev, mrt_uart_handle_t uart, mrt_gpio_t irq,  mrt_gpi
  */
 void anv401_deinit(anv401_t* dev);
 
+/**
+ * @brief Puts device in sleep mode
+ *
+ * @param dev ptr to device struct
+ * @return anv401_status_e
+ */
+anv401_status_e anv401_sleep_mode(anv401_t* dev);
 
 /**
  * @brief Gets the number of existing fingerprints in db

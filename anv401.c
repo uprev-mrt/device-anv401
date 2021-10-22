@@ -62,7 +62,7 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
   {
     chk ^= buf[i];
   }
-  buf[tx_len-1] = chk;
+  buf[tx_len-2] = chk;
   
   //Send tail byte ,command, then tail byte
   MRT_UART_TX(dev->mUart, buf, tx_len, 1000);
@@ -157,7 +157,14 @@ void anv401_init(anv401_t* dev, mrt_uart_handle_t uart, mrt_gpio_t irq,  mrt_gpi
   dev->mRst = rst;
 }
 
+anv401_status_e anv401_sleep_mode(anv401_t* dev)
+{
+	anv401_trx_t trx;
 
+	anv401_build_trx(&trx, ANV401_CMD_SLP);
+
+	return anv401_std_transaction(dev, &trx);
+}
 
 uint16_t anv401_get_user_count(anv401_t* dev)
 {
