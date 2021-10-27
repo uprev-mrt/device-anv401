@@ -36,6 +36,7 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
 {
   int len;  //Actual bytes receieved
   uint8_t chk = 0;
+  uint8_t msg_start_ind = 0;
 
 /*
  *  Transacton structure for standard 8 byte packet
@@ -63,7 +64,7 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
     chk ^= buf[i];
   }
   buf[tx_len-2] = chk;
-  
+
   //Send tail byte ,command, then tail byte
   MRT_UART_TX(dev->mUart, buf, tx_len, 1000);
 
@@ -80,6 +81,25 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
     return ANV401_STATUS_FAIL;
   }
   
+  // Find the message head byte in the buffer
+  for(int i = 0; i < rx_len; i++)
+  {
+    if(buf[i] == ANV401_HEAD)
+    {
+      msg_start_ind = i;
+      break;
+    }
+  }
+
+  // If head is not at index 0, shift buffer
+  if(msg_start_ind != 0)
+  {
+    for(int i = 0; i < rx_len; i++)
+    {
+      buf[i] = buf[msg_start_ind + i];
+    }
+  }
+
   //TODO verify packet checksum
   chk = 0;
   for(int i=1 ; i< rx_len -2; i++ )
@@ -117,7 +137,7 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
  
 anv401_status_e anv401_std_transaction(anv401_t* dev, anv401_trx_t* trx )
 {
-  uint8_t buf[8] = {0};
+  uint8_t buf[16] = {0};
   trx->mStatus = ANV401_STATUS_FAIL;
 
   //Copy command
@@ -150,11 +170,12 @@ anv401_status_e anv401_std_transaction(anv401_t* dev, anv401_trx_t* trx )
 
 /* Public Functions ---------------------------------------------------------*/
 
-void anv401_init(anv401_t* dev, mrt_uart_handle_t uart, mrt_gpio_t irq,  mrt_gpio_t rst)
+void anv401_init(anv401_t* dev, mrt_uart_handle_t uart, mrt_gpio_t irq,  mrt_gpio_t rst, uint16_t max_users)
 {
   dev->mUart = uart;
   dev->mIrq = irq;
   dev->mRst = rst;
+  dev->mMaxUsers = max_users;
 }
 
 anv401_status_e anv401_sleep_mode(anv401_t* dev)
@@ -181,6 +202,13 @@ uint16_t anv401_get_user_count(anv401_t* dev)
     count = ((trx.mData[0] << 8) | trx.mData[1]);
   }
 
+  // ANV401 sends 0x09 (user count) command with status 0xff (number of available users)
+  //  when it comes up out of sleep mode
+  if(trx.mStatus == 0xff)
+  {
+    // TODO make this safer
+    count = anv401_get_user_count(dev);
+  }
 
   return count;
 }
@@ -197,7 +225,7 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   uint16_t new_user_id = user_count+1;
   anv401_trx_t trx;
 
-  if(user_count >=ANV401_USER_MAX_CNT )
+  if(user_count >= dev->mMaxUsers)
   {
     return ANV401_STATUS_FULL;
   }
@@ -208,9 +236,10 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   anv401_build_trx(&trx, ANV401_CMD_ADD_1);
   trx.mData[0] = new_user_id >> 8;
   trx.mData[1] = new_user_id && 0xFF;
-  trx.mData[3] = perm;
+  trx.mData[2] = perm;
 
-  if(anv401_std_transaction(dev, &trx) != ANV401_STATUS_SUCCESS)
+  anv401_status_e result = anv401_std_transaction(dev, &trx);
+  if(result != ANV401_STATUS_SUCCESS)
   {
     return trx.mStatus;
   }
@@ -219,9 +248,10 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   anv401_build_trx(&trx, ANV401_CMD_ADD_2);
   trx.mData[0] = new_user_id >> 8;
   trx.mData[1] = new_user_id && 0xFF;
-  trx.mData[3] = perm;
+  trx.mData[2] = perm;
 
-  if(anv401_std_transaction(dev, &trx) != ANV401_STATUS_SUCCESS)
+  result = anv401_std_transaction(dev, &trx);
+  if(result != ANV401_STATUS_SUCCESS)
   {
     return trx.mStatus;
   }
@@ -230,9 +260,10 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   anv401_build_trx(&trx, ANV401_CMD_ADD_3);
   trx.mData[0] = new_user_id >> 8;
   trx.mData[1] = new_user_id && 0xFF;
-  trx.mData[3] = perm;
+  trx.mData[2] = perm;
 
-  if(anv401_std_transaction(dev, &trx) != ANV401_STATUS_SUCCESS)
+  result = anv401_std_transaction(dev, &trx);
+  if(result != ANV401_STATUS_SUCCESS)
   {
     return trx.mStatus;
   }

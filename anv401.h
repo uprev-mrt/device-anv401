@@ -80,6 +80,7 @@ typedef struct{
   mrt_uart_handle_t mUart;  //uart Handle
   mrt_gpio_t mIrq;          //IRQ/wake line
   mrt_gpio_t mRst;          //Reset pin of sensor
+  uint16_t mMaxUsers;       //Max number of registered users
 }anv401_t;
 
 
@@ -93,7 +94,7 @@ typedef struct{
  * @param uart uart handle for device
  * @param irq gpio handle for interrupt pin
  */
-void anv401_init(anv401_t* dev, mrt_uart_handle_t uart, mrt_gpio_t irq,  mrt_gpio_t rst);
+void anv401_init(anv401_t* dev, mrt_uart_handle_t uart, mrt_gpio_t irq,  mrt_gpio_t rst, uint16_t max_users);
 
 
 /**
