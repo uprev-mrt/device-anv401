@@ -68,9 +68,6 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
   //Send tail byte ,command, then tail byte
   MRT_UART_TX(dev->mUart, buf, tx_len, 1000);
 
-  //Give device time to process transaction
-  MRT_DELAY_MS(10);
-
   //Read in bytes from UART buffer
   len = MRT_UART_RX(dev->mUart, buf, rx_len, 1000);
 
@@ -79,25 +76,6 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
   {
     MRT_PRINTF("[ANV401] expected %d bytes, but received %d", rx_len, len);
     return ANV401_STATUS_FAIL;
-  }
-  
-  // Find the message head byte in the buffer
-  for(int i = 0; i < rx_len; i++)
-  {
-    if(buf[i] == ANV401_HEAD)
-    {
-      msg_start_ind = i;
-      break;
-    }
-  }
-
-  // If head is not at index 0, shift buffer
-  if(msg_start_ind != 0)
-  {
-    for(int i = 0; i < rx_len; i++)
-    {
-      buf[i] = buf[msg_start_ind + i];
-    }
   }
 
   //TODO verify packet checksum
@@ -200,14 +178,6 @@ uint16_t anv401_get_user_count(anv401_t* dev)
   { 
     //Get Count from return data
     count = ((trx.mData[0] << 8) | trx.mData[1]);
-  }
-
-  // ANV401 sends 0x09 (user count) command with status 0xff (number of available users)
-  //  when it comes up out of sleep mode
-  if(trx.mStatus == 0xff)
-  {
-    // TODO make this safer
-    count = anv401_get_user_count(dev);
   }
 
   return count;
