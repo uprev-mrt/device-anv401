@@ -36,7 +36,6 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
 {
   int len;  //Actual bytes receieved
   uint8_t chk = 0;
-  uint8_t msg_start_ind = 0;
 
 /*
  *  Transacton structure for standard 8 byte packet
@@ -167,7 +166,7 @@ anv401_status_e anv401_sleep_mode(anv401_t* dev)
 
 uint16_t anv401_get_user_count(anv401_t* dev)
 {
-  uint16_t count =0;
+  uint16_t count =0xff;
   anv401_trx_t trx; 
 
   anv401_build_trx(&trx, ANV401_CMD_USER_CNT);
