@@ -204,7 +204,7 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   //First
   anv401_build_trx(&trx, ANV401_CMD_ADD_1);
   trx.mData[0] = new_user_id >> 8;
-  trx.mData[1] = new_user_id && 0xFF;
+  trx.mData[1] = new_user_id & 0xFF;
   trx.mData[2] = perm;
 
   anv401_status_e result = anv401_std_transaction(dev, &trx);
@@ -216,7 +216,7 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   //Second
   anv401_build_trx(&trx, ANV401_CMD_ADD_2);
   trx.mData[0] = new_user_id >> 8;
-  trx.mData[1] = new_user_id && 0xFF;
+  trx.mData[1] = new_user_id & 0xFF;
   trx.mData[2] = perm;
 
   result = anv401_std_transaction(dev, &trx);
@@ -228,7 +228,7 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   //Third
   anv401_build_trx(&trx, ANV401_CMD_ADD_3);
   trx.mData[0] = new_user_id >> 8;
-  trx.mData[1] = new_user_id && 0xFF;
+  trx.mData[1] = new_user_id & 0xFF;
   trx.mData[2] = perm;
 
   result = anv401_std_transaction(dev, &trx);
