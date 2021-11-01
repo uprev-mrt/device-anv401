@@ -291,11 +291,8 @@ anv401_user_t anv401_compare_fingerprint(anv401_t* dev)
 
   //Compare does not return a normal status
   //Status for this transactions will be a permission level (1-3), ACK_NOUSER, or ACK_TIMEOUT
-  if( trx.mStatus < 4)
-  {
-    user.mPerm = trx.mStatus;
-    user.mId = (trx.mData[0] << 8 ) | trx.mData[1];
-  }
+  user.mPerm = trx.mStatus;
+  user.mId = (trx.mData[0] << 8 ) | trx.mData[1];
 
   return user;
 }
