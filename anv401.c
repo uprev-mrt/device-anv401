@@ -62,13 +62,10 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
   {
     chk ^= buf[i];
   }
-  buf[tx_len-1] = chk;
-  
+  buf[tx_len-2] = chk;
+
   //Send tail byte ,command, then tail byte
   MRT_UART_TX(dev->mUart, buf, tx_len, 1000);
-
-  //Give device time to process transaction
-  MRT_DELAY_MS(10);
 
   //Read in bytes from UART buffer
   len = MRT_UART_RX(dev->mUart, buf, rx_len, 1000);
@@ -79,7 +76,7 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
     MRT_PRINTF("[ANV401] expected %d bytes, but received %d", rx_len, len);
     return ANV401_STATUS_FAIL;
   }
-  
+
   //TODO verify packet checksum
   chk = 0;
   for(int i=1 ; i< rx_len -2; i++ )
@@ -117,7 +114,7 @@ anv401_status_e anv401_transaction(anv401_t* dev, uint8_t* buf, int tx_len, int 
  
 anv401_status_e anv401_std_transaction(anv401_t* dev, anv401_trx_t* trx )
 {
-  uint8_t buf[8] = {0};
+  uint8_t buf[16] = {0};
   trx->mStatus = ANV401_STATUS_FAIL;
 
   //Copy command
@@ -150,18 +147,26 @@ anv401_status_e anv401_std_transaction(anv401_t* dev, anv401_trx_t* trx )
 
 /* Public Functions ---------------------------------------------------------*/
 
-void anv401_init(anv401_t* dev, mrt_uart_handle_t uart, mrt_gpio_t irq,  mrt_gpio_t rst)
+void anv401_init(anv401_t* dev, mrt_uart_handle_t uart, mrt_gpio_t irq,  mrt_gpio_t rst, uint16_t max_users)
 {
   dev->mUart = uart;
   dev->mIrq = irq;
   dev->mRst = rst;
+  dev->mMaxUsers = max_users;
 }
 
+anv401_status_e anv401_sleep_mode(anv401_t* dev)
+{
+	anv401_trx_t trx;
 
+	anv401_build_trx(&trx, ANV401_CMD_SLP);
+
+	return anv401_std_transaction(dev, &trx);
+}
 
 uint16_t anv401_get_user_count(anv401_t* dev)
 {
-  uint16_t count =0;
+  uint16_t count =0xff;
   anv401_trx_t trx; 
 
   anv401_build_trx(&trx, ANV401_CMD_USER_CNT);
@@ -173,7 +178,6 @@ uint16_t anv401_get_user_count(anv401_t* dev)
     //Get Count from return data
     count = ((trx.mData[0] << 8) | trx.mData[1]);
   }
-
 
   return count;
 }
@@ -190,7 +194,7 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   uint16_t new_user_id = user_count+1;
   anv401_trx_t trx;
 
-  if(user_count >=ANV401_USER_MAX_CNT )
+  if(user_count >= dev->mMaxUsers)
   {
     return ANV401_STATUS_FULL;
   }
@@ -200,10 +204,11 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   //First
   anv401_build_trx(&trx, ANV401_CMD_ADD_1);
   trx.mData[0] = new_user_id >> 8;
-  trx.mData[1] = new_user_id && 0xFF;
-  trx.mData[3] = perm;
+  trx.mData[1] = new_user_id & 0xFF;
+  trx.mData[2] = perm;
 
-  if(anv401_std_transaction(dev, &trx) != ANV401_STATUS_SUCCESS)
+  anv401_status_e result = anv401_std_transaction(dev, &trx);
+  if(result != ANV401_STATUS_SUCCESS)
   {
     return trx.mStatus;
   }
@@ -211,10 +216,11 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   //Second
   anv401_build_trx(&trx, ANV401_CMD_ADD_2);
   trx.mData[0] = new_user_id >> 8;
-  trx.mData[1] = new_user_id && 0xFF;
-  trx.mData[3] = perm;
+  trx.mData[1] = new_user_id & 0xFF;
+  trx.mData[2] = perm;
 
-  if(anv401_std_transaction(dev, &trx) != ANV401_STATUS_SUCCESS)
+  result = anv401_std_transaction(dev, &trx);
+  if(result != ANV401_STATUS_SUCCESS)
   {
     return trx.mStatus;
   }
@@ -222,10 +228,11 @@ anv401_status_e anv401_add_user(anv401_t* dev, uint8_t perm)
   //Third
   anv401_build_trx(&trx, ANV401_CMD_ADD_3);
   trx.mData[0] = new_user_id >> 8;
-  trx.mData[1] = new_user_id && 0xFF;
-  trx.mData[3] = perm;
+  trx.mData[1] = new_user_id & 0xFF;
+  trx.mData[2] = perm;
 
-  if(anv401_std_transaction(dev, &trx) != ANV401_STATUS_SUCCESS)
+  result = anv401_std_transaction(dev, &trx);
+  if(result != ANV401_STATUS_SUCCESS)
   {
     return trx.mStatus;
   }
@@ -284,11 +291,8 @@ anv401_user_t anv401_compare_fingerprint(anv401_t* dev)
 
   //Compare does not return a normal status
   //Status for this transactions will be a permission level (1-3), ACK_NOUSER, or ACK_TIMEOUT
-  if( trx.mStatus < 4)
-  {
-    user.mPerm = trx.mStatus;
-    user.mId = (trx.mData[0] << 8 ) | trx.mData[1];
-  }
+  user.mPerm = trx.mStatus;
+  user.mId = (trx.mData[0] << 8 ) | trx.mData[1];
 
   return user;
 }
@@ -315,10 +319,9 @@ anv401_status_e anv401_set_timeout(anv401_t* dev, uint8_t val)
 {
   anv401_trx_t trx;
   anv401_build_trx(&trx, ANV401_CMD_TIMEOUT);
-  uint8_t timeout = 0;
 
   //This byte detemermines if we are setting, or getting
-  trx.mData[2] = ANV401_QRY;
+  trx.mData[2] = ANV401_SET;
   trx.mData[1] =val;
 
   return anv401_std_transaction(dev,&trx);
